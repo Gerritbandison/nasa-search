@@ -17,25 +17,40 @@ jobs:
         run: echo 'GITHUB_REPOSITORY=$GITHUB_REPOSITORY' >> $GITHUB_ENV
         
       - name: Checkout 🛎️
-        uses: actions/checkout@v4.1.7 # If you're using actions/checkout@v2 you must set persist-credentials to false in most cases for the deployment to work correctly.
+        uses: actions/checkout@v4.1.7 
         with:
           persist-credentials: false
 
-      - name: Read CNAME
+      - name: Check if CNAME file exists
+        id: check_cname
+        run: |
+          if [ -f ./CNAME ]; then
+            echo "CNAME file exists."
+            echo "::set-output name=exists::true"
+          else
+            echo "CNAME file does not exist."
+            echo "::set-output name=exists::false"
+          fi
+
+      - name: Read CNAME if it exists
+        if: steps.check_cname.outputs.exists == 'true'
         id: cname
         uses: juliangruber/read-file-action@v1
         with:
           path: ./CNAME
+
       - name: set env variable CNAME
+        if: steps.check_cname.outputs.exists == 'true'
         run: echo 'CNAME=${{ steps.cname.outputs.content }}' >> $GITHUB_ENV
-        
-      - name: Install and Build 🔧 # This example project is built using npm and outputs the result to the 'build' folder. Replace with the commands required to build your project, or remove this step entirely if your site is pre-built.
+
+      - name: Install and Build 🔧 
         run: |
           npm install
           npm run build
+          
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.6.3
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: gh-pages # The branch the action should deploy to.
-          FOLDER: public # The folder the action should deploy.
+          BRANCH: gh-pages
+          FOLDER: public
