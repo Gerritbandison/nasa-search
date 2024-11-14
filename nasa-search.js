@@ -1,17 +1,7 @@
-/**
- * Copyright 2024 
- * @license Apache-2.0, see LICENSE for full text.
- */
 import { LitElement, html, css } from "lit";
 import { DDDSuper } from "@haxtheweb/d-d-d/d-d-d.js";
 import { I18NMixin } from "@haxtheweb/i18n-manager/lib/I18NMixin.js";
 
-/**
- * `nasa-search`
- * 
- * @demo index.html
- * @element nasa-search
- */
 export class NasaSearch extends DDDSuper(I18NMixin(LitElement)) {
   static get tag() {
     return "nasa-search";
@@ -21,29 +11,21 @@ export class NasaSearch extends DDDSuper(I18NMixin(LitElement)) {
     super();
     this.title = "NASA Image Search";
     this.t = this.t || {};
-    this.t = {
-      ...this.t,
-    };
-    this.results = []; // Store fetched NASA data here
-    this.registerLocalization({
-      context: this,
-      localesPath:
-        new URL("./locales/nasa-search.ar.json", import.meta.url).href +
-        "/../",
-      locales: ["ar", "es", "hi", "zh"],
-    });
+    this.results = [];
+    this.filteredResults = [];
+    this.searchQuery = "";
   }
 
-  // Lit reactive properties
   static get properties() {
     return {
       ...super.properties,
       title: { type: String },
-      results: { type: Array }
+      results: { type: Array },
+      filteredResults: { type: Array },
+      searchQuery: { type: String },
     };
   }
 
-  // Lit scoped styles
   static get styles() {
     return [
       super.styles,
@@ -58,6 +40,20 @@ export class NasaSearch extends DDDSuper(I18NMixin(LitElement)) {
           margin: var(--ddd-spacing-2);
           padding: var(--ddd-spacing-4);
         }
+        .search-bar {
+          width: 100%;
+          padding: 8px;
+          margin-bottom: 16px;
+          font-size: 1rem;
+          border-radius: 8px;
+          border: 1px solid #ccc;
+        }
+        .results {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          justify-content: center;
+        }
         .card {
           width: 240px;
           border: 1px solid #ccc;
@@ -65,15 +61,6 @@ export class NasaSearch extends DDDSuper(I18NMixin(LitElement)) {
           overflow: hidden;
           margin: 10px;
           transition: background-color 0.3s ease;
-        }
-        .results {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 10px; /* space between cards */
-          justify-content: center; /* centers cards within container */
-        }
-        .card:hover {
-          background-color: #f0f0f0;
         }
         .card img {
           width: 240px;
@@ -87,22 +74,18 @@ export class NasaSearch extends DDDSuper(I18NMixin(LitElement)) {
           font-size: 1rem;
           font-weight: bold;
         }
-        .secondary_creator {
-          font-size: 0.8rem;
-          color: #777;
-        }
       `
     ];
   }
 
-  // Fetch data from NASA API
   async fetchData() {
     try {
       const response = await fetch(`https://images-api.nasa.gov/search?media_type=image&q=Saturn`);
       const data = await response.json();
       this.results = data.collection.items;
+      this.filteredResults = this.results; // Initialize with all results
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error("Error fetching data:", error);
     }
   }
 
@@ -111,24 +94,29 @@ export class NasaSearch extends DDDSuper(I18NMixin(LitElement)) {
     this.fetchData();
   }
 
-  // Lit render the HTML
+  // Handle search input changes
+  handleSearch(event) {
+    this.searchQuery = event.target.value.toLowerCase();
+    this.filteredResults = this.results.filter((item) =>
+      item.data[0].title.toLowerCase().includes(this.searchQuery)
+    );
+  }
+
   render() {
     return html`
       <div class="wrapper">
-        <h3><span>${this.t.title}:</span> ${this.title}</h3>
+        <input
+          type="text"
+          class="search-bar"
+          placeholder="Search images..."
+          @input="${this.handleSearch}"
+        />
+        <h3>${this.title}</h3>
         <div class="results">
-          ${this.results.map(
-            item => html`
-              <div
-                class="card"
-                tabindex="0"
-                @click="${() => window.open(item.links[0].href, '_blank')}"
-                role="button"
-              >
-                <img
-                  src="${item.links[0].href}"
-                  alt="${item.data[0].title}"
-                />
+          ${this.filteredResults.map(
+            (item) => html`
+              <div class="card" @click="${() => window.open(item.links[0].href, '_blank')}">
+                <img src="${item.links[0].href}" alt="${item.data[0].title}" />
                 <div class="card-content">
                   <div class="title">${item.data[0].title}</div>
                   <div class="secondary_creator">
@@ -141,13 +129,6 @@ export class NasaSearch extends DDDSuper(I18NMixin(LitElement)) {
         </div>
       </div>
     `;
-  }
-
-  /**
-   * haxProperties integration via file reference
-   */
-  static get haxProperties() {
-    return new URL(`./lib/${this.tag}.haxProperties.json`, import.meta.url).href;
   }
 }
 
